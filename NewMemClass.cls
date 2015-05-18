@@ -39,11 +39,12 @@ Const PROCESS_VM_READ        As Long = &H10
 Const PROCESS_VM_WRITE       As Long = &H20
 Const PROCESS_ALL_ACCESS     As Long = &H1F0FFF
 
-'Private variables
-Private lngPid        As Long
-Private lngHandle     As Long
-Private lngOpenHandle As Long
-Private lngThread     As Long
+'Inner variables
+Private lngPid               As Long        'Holds the process ID
+Private lngHandle            As Long        'Holds the process Handle
+Private lngOpenHandle_Read   As Long        'Holds the process opened handle - for reading
+Private lngOpenHandle_Write  As Long        'Holds the process opened handle - for writing
+Private lngThread            As Long        'Holds the thread ID that opened the process
 
 '=== Get Process ID ===
 Public Property Get ProcessID() As Long
@@ -60,9 +61,14 @@ Public Property Get ThreadHandle() As Long
     ThreadHandle = lngThread
 End Property
 
-'=== Get Open Process's Handle ===
-Public Property Get OpenProcessHandle() As Long
-    OpenProcessHandle = lngOpenHandle
+'=== Get Open Process's Handle (Reading) ===
+Public Property Get OpenProcessHandle_Read() As Long
+    OpenProcessHandle_Read = lngOpenHandle_Read
+End Property
+
+'=== Get Open Process's Handle (Writing) ===
+Public Property Get OpenProcessHandle_Write() As Long
+    OpenProcessHandle_Write = lngOpenHandle_Write
 End Property
 
 '---------------------------------------------------------------------------------------
@@ -72,6 +78,7 @@ End Property
 Public Sub AttachToProcess_ByWindowName(sExactWindowName As String)
         lngHandle = FindWindow(vbNullString, sExactWindowName)
         lngThread = GetWindowThreadProcessId(lngHandle, lngPid)
+        
 End Sub
 
 '---------------------------------------------------------------------------------------
@@ -92,12 +99,21 @@ Public Sub AttachToProcess_TopMostWindow()
         lngThread = GetWindowThreadProcessId(lngHandle, lngPid)
 End Sub
 
-'---------------------------------------------------------------------------------------
-' Procedure : OpenWithPremissions()
-' Purpose   : used to open a process (by that getting an OpenProcessHandle (lngOpenHandle) to which we can address our APIs when we read\write)
-'---------------------------------------------------------------------------------------
-Private Sub OpenWithPremissions(Optional lngPremissionType As Long = PROCESS_ALL_ACCESS)
-    lngOpenHandle = OpenProcess(lngPremissionType, False, lngPid)
-End Sub
+'Open process with premission level
+Private Function OpenProcessByHandle(ByRef lngOpenHandle As Long, Optional lngPremissionLevel As Long = PROCESS_ALL_ACCESS) As Boolean
+    lngOpenHandle = OpenProcess(lngPremissionLevel, False, lngPid)
+    If (lngOpenHandle <> 0) Then
+        OpenProcessByHandle = True
+    Else
+        OpenProcessByHandle = False
+    End If
+End Function
 
-
+'Close process by opened-handle
+Private Function CloseProcessByHandle(lngProcessOpenHandle As Long) As Boolean
+    If (CloseHandle(lngProcessOpenHandle)) <> 0 Then
+        CloseProcessByHandle = True
+    Else
+        CloseProcessByHandle = False
+    End If
+End Function
