@@ -39,6 +39,7 @@ Const PROCESS_VM_READ        As Long = &H10
 Const PROCESS_VM_WRITE       As Long = &H20
 Const PROCESS_ALL_ACCESS     As Long = &H1F0FFF
 
+'Special Handles Constants
 Const INVALID_HANDLE         As Long = 0
 
 'Inner variables
@@ -47,6 +48,12 @@ Private lngHandle            As Long        'Holds the process Handle
 Private lngOpenHandle_Read   As Long        'Holds the process opened handle - for reading
 Private lngOpenHandle_Write  As Long        'Holds the process opened handle - for writing
 Private lngThread            As Long        'Holds the thread ID that opened the process
+
+'Type Sizes
+Const SIZEOF_BYTE            As Integer = 1
+Const SIZEOF_INTEGER         As Integer = 2
+Const SIZEOF_LONG            As Integer = 4
+Const SIZEOF_DOUBLE          As Integer = 8
 
 '=== Get Process ID ===
 Public Property Get ProcessID() As Long
@@ -121,24 +128,88 @@ Public Sub ReleaseProcess()
     Call CloseProcessByHandle(lngOpenHandle_Write)
 End Sub
 
+'---------------------------------------------------------------------------------------
+' Procedure : Read_Byte
+' Purpose   : Reads a 1 byte address (byte)
+'---------------------------------------------------------------------------------------
+Public Function Read_Byte(lngAddressToReadfrom As Long) As Single
+    Call ReadMemory(VarPtr(Read_Byte), SIZEOF_BYTE, lngAddressToReadfrom)
+End Function
+
+'---------------------------------------------------------------------------------------
+' Procedure : Read_Integer
+' Purpose   : Reads a 2 byte address (Int)
+'---------------------------------------------------------------------------------------
+Public Function Read_Integer(lngAddressToReadfrom As Long) As Integer
+    Call ReadMemory(VarPtr(Read_Integer), SIZEOF_INTEGER, lngAddressToReadfrom)
+End Function
+
+'---------------------------------------------------------------------------------------
+' Procedure : Read_Long
+' Purpose   : Reads a 4 byte address (Long)
+'---------------------------------------------------------------------------------------
+Public Function Read_Long(lngAddressToReadfrom As Long) As Long
+    Call ReadMemory(VarPtr(Read_Long), SIZEOF_LONG, lngAddressToReadfrom)
+End Function
+
+'---------------------------------------------------------------------------------------
+' Procedure : Read_Float
+' Purpose   : Reads a 4 byte address (Float)
+'---------------------------------------------------------------------------------------
+Public Function Read_Float(lngAddressToReadfrom As Long) As Single
+    Call ReadMemory(VarPtr(Read_Float), SIZEOF_LONG, lngAddressToReadfrom)
+End Function
+
+'---------------------------------------------------------------------------------------
+' Procedure : Read_Double
+' Purpose   : Reads a 8 byte address (double)
+'---------------------------------------------------------------------------------------
+Public Function Read_Double(lngAddressToReadfrom As Long) As Double
+    Call ReadMemory(VarPtr(Read_Double), SIZEOF_DOUBLE, lngAddressToReadfrom)
+End Function
+
+'---------------------------------------------------------------------------------------
+' Procedure : Read_String
+' Purpose   : Reads a 255 long string unless limited by the 2nd argument
+'---------------------------------------------------------------------------------------
+Public Function Read_String(lngAddressToReadfrom As Long, Optional lngLengthOfString As Long = 255) As String
+    Dim strBuffer       As String * 255
+    Dim intNullLocation As Long
+
+    strBuffer = String(lngLengthOfString, 0)
+    
+    'if successfull
+    If (ReadProcessMemory(lngOpenHandle_Read, ByVal lngAddressToReadfrom, ByVal strBuffer, lngLengthOfString, &O0) <> 0) Then
+    
+        'return all chars until the \null char
+        intNullLocation = InStr(strBuffer, Chr(0))
+        If intNullLocation > 0 Then strBuffer = Left(strBuffer, intNullLocation - 1)
+        
+        'cleanup
+        Read_String = Trim(strBuffer)
+    End If
+End Function
+
 'Open process with premission level
 Private Function OpenProcessByHandle(ByRef lngOpenHandle As Long, Optional lngPremissionLevel As Long = PROCESS_ALL_ACCESS) As Boolean
     'if there's an open handle close it prior to getting a new one.
     If lngOpenHandle <> INVALID_HANDLE Then CloseProcessByHandle (lngOpenHandle)
     'open the process
     lngOpenHandle = OpenProcess(lngPremissionLevel, False, lngPid)
-    If (lngOpenHandle <> INVALID_HANDLE) Then
-        OpenProcessByHandle = True
-    Else
-        OpenProcessByHandle = False
-    End If
+    'validate
+    OpenProcessByHandle = (lngOpenHandle <> INVALID_HANDLE)
 End Function
 
 'Close process by opened-handle
 Private Function CloseProcessByHandle(lngProcessOpenHandle As Long) As Boolean
-    If (CloseHandle(lngProcessOpenHandle)) <> INVALID_HANDLE Then
-        CloseProcessByHandle = True
-    Else
-        CloseProcessByHandle = False
-    End If
+    CloseProcessByHandle = (CloseHandle(lngProcessOpenHandle) <> INVALID_HANDLE)
 End Function
+
+'Read Memory to buffer
+Private Function ReadMemory(lngDestinationPointer As Long, lngLength As Long, lngAddress As Long) As Boolean
+    ReadMemory = (ReadProcessMemory(lngOpenHandle_Read, ByVal lngAddress, ByVal lngDestinationPointer, lngLength, &O0) <> INVALID_HANDLE)
+End Function
+
+
+
+
