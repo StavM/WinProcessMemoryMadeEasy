@@ -39,6 +39,8 @@ Const PROCESS_VM_READ        As Long = &H10
 Const PROCESS_VM_WRITE       As Long = &H20
 Const PROCESS_ALL_ACCESS     As Long = &H1F0FFF
 
+Const INVALID_HANDLE         As Long = 0
+
 'Inner variables
 Private lngPid               As Long        'Holds the process ID
 Private lngHandle            As Long        'Holds the process Handle
@@ -76,9 +78,12 @@ End Property
 ' Purpose   : use to specify the exact window name that you want to target for memory reading\writing.
 '---------------------------------------------------------------------------------------
 Public Sub AttachToProcess_ByWindowName(sExactWindowName As String)
-        lngHandle = FindWindow(vbNullString, sExactWindowName)
-        lngThread = GetWindowThreadProcessId(lngHandle, lngPid)
-        
+    lngHandle = FindWindow(vbNullString, sExactWindowName)
+    lngThread = GetWindowThreadProcessId(lngHandle, lngPid)
+    
+    'Get two reference handles - one for reading, one for writing
+    Call OpenProcessByHandle(lngOpenHandle_Read, PROCESS_VM_READ)
+    Call OpenProcessByHandle(lngOpenHandle_Write, PROCESS_VM_WRITE)
 End Sub
 
 '---------------------------------------------------------------------------------------
@@ -86,8 +91,12 @@ End Sub
 ' Purpose   : use to specify the exact class name that you want to target for memory reading\writing.
 '---------------------------------------------------------------------------------------
 Public Sub AttachToProcess_ByWindowClass(sExactClassName As String)
-        lngHandle = FindWindow(sExactClassName, vbNullString)
-        lngThread = GetWindowThreadProcessId(lngHandle, lngPid)
+    lngHandle = FindWindow(sExactClassName, vbNullString)
+    lngThread = GetWindowThreadProcessId(lngHandle, lngPid)
+    
+    'Get two reference handles - one for reading, one for writing
+    Call OpenProcessByHandle(lngOpenHandle_Read, PROCESS_VM_READ)
+    Call OpenProcessByHandle(lngOpenHandle_Write, PROCESS_VM_WRITE)
 End Sub
 
 '---------------------------------------------------------------------------------------
@@ -95,14 +104,30 @@ End Sub
 ' Purpose   : use to target the current top most window (in foreground) for memory reading\writing, regardless of its name.
 '---------------------------------------------------------------------------------------
 Public Sub AttachToProcess_TopMostWindow()
-        lngHandle = FindWindow(vbNull, vbNull)
-        lngThread = GetWindowThreadProcessId(lngHandle, lngPid)
+    lngHandle = FindWindow(vbNull, vbNull)
+    lngThread = GetWindowThreadProcessId(lngHandle, lngPid)
+    
+    'Get two reference handles - one for reading, one for writing
+    Call OpenProcessByHandle(lngOpenHandle_Read, PROCESS_VM_READ)
+    Call OpenProcessByHandle(lngOpenHandle_Write, PROCESS_VM_WRITE)
+End Sub
+
+'---------------------------------------------------------------------------------------
+' Procedure : ReleaseProcess
+' Purpose   : use to close read, and write, opened handles
+'---------------------------------------------------------------------------------------
+Public Sub ReleaseProcess()
+    Call CloseProcessByHandle(lngOpenHandle_Read)
+    Call CloseProcessByHandle(lngOpenHandle_Write)
 End Sub
 
 'Open process with premission level
 Private Function OpenProcessByHandle(ByRef lngOpenHandle As Long, Optional lngPremissionLevel As Long = PROCESS_ALL_ACCESS) As Boolean
+    'if there's an open handle close it prior to getting a new one.
+    If lngOpenHandle <> INVALID_HANDLE Then CloseProcessByHandle (lngOpenHandle)
+    'open the process
     lngOpenHandle = OpenProcess(lngPremissionLevel, False, lngPid)
-    If (lngOpenHandle <> 0) Then
+    If (lngOpenHandle <> INVALID_HANDLE) Then
         OpenProcessByHandle = True
     Else
         OpenProcessByHandle = False
@@ -111,7 +136,7 @@ End Function
 
 'Close process by opened-handle
 Private Function CloseProcessByHandle(lngProcessOpenHandle As Long) As Boolean
-    If (CloseHandle(lngProcessOpenHandle)) <> 0 Then
+    If (CloseHandle(lngProcessOpenHandle)) <> INVALID_HANDLE Then
         CloseProcessByHandle = True
     Else
         CloseProcessByHandle = False
