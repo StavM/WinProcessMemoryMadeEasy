@@ -185,7 +185,6 @@ Public Function Read_String(lngAddressToReadfrom As Long, Optional lngLengthOfSt
         intNullLocation = InStr(strBuffer, Chr(0))
         If intNullLocation > 0 Then strBuffer = Left(strBuffer, intNullLocation - 1)
         
-        'cleanup
         Read_String = Trim(strBuffer)
     End If
 End Function
