@@ -9,4 +9,4 @@ without having to go through the steep learning curve of windows internals, by t
 
 Usage and examples can be found on the \Examples folder.
 
-More examples will be added this week.
+More examples will be added later on.
